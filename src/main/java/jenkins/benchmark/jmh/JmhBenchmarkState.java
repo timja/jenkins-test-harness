@@ -1,28 +1,29 @@
 package jenkins.benchmark.jmh;
 
+import edu.umd.cs.findbugs.annotations.CheckForNull;
 import hudson.model.Hudson;
 import hudson.model.RootAction;
 import hudson.security.ACL;
-import jenkins.model.Jenkins;
-import jenkins.model.JenkinsLocationConfiguration;
-import org.apache.commons.lang3.mutable.MutableInt;
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.eclipse.jetty.server.Server;
-import org.jvnet.hudson.test.JenkinsRule;
-import org.jvnet.hudson.test.TemporaryDirectoryAllocator;
-import org.openjdk.jmh.annotations.Scope;
-import org.openjdk.jmh.annotations.Setup;
-import org.openjdk.jmh.annotations.State;
-import org.openjdk.jmh.annotations.TearDown;
-
-import javax.annotation.CheckForNull;
-import javax.servlet.ServletContext;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.servlet.ServletContext;
+import jenkins.model.Jenkins;
+import jenkins.model.JenkinsLocationConfiguration;
+import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.handler.ContextHandler;
+import org.jvnet.hudson.test.JavaNetReverseProxy;
+import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.TemporaryDirectoryAllocator;
+import org.jvnet.hudson.test.TestPluginManager;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.TearDown;
 
 /**
  * Standard benchmark {@link State} for JMH when a Jenkins instance is required.
@@ -42,7 +43,7 @@ public abstract class JmhBenchmarkState implements RootAction {
     private static final String contextPath = "/jenkins";
 
     private final TemporaryDirectoryAllocator temporaryDirectoryAllocator = new TemporaryDirectoryAllocator();
-    private final MutableInt localPort = new MutableInt();
+    private final AtomicInteger localPort = new AtomicInteger();
 
     private Jenkins jenkins = null;
     private Server server = null;
@@ -78,6 +79,11 @@ public abstract class JmhBenchmarkState implements RootAction {
         } finally {
             JenkinsRule._stopJenkins(server, null, jenkins);
             try {
+                JavaNetReverseProxy.getInstance().stop();
+            } catch (Exception e) {
+                LOGGER.log(Level.WARNING, "Unable to stop JavaNetReverseProxy server", e);
+            }
+            try {
                 temporaryDirectoryAllocator.dispose();
             } catch (InterruptedException | IOException e) {
                 LOGGER.log(Level.WARNING, "Unable to dispose temporary Jenkins directory" +
@@ -87,13 +93,17 @@ public abstract class JmhBenchmarkState implements RootAction {
     }
 
     private void launchInstance() throws Exception {
-        ImmutablePair<Server, ServletContext> results = JenkinsRule._createWebServer(contextPath, localPort::setValue,
-                getClass().getClassLoader(), localPort.getValue(), JenkinsRule::_configureUserRealm);
+        server = JenkinsRule._createWebServer(
+                contextPath,
+                localPort::set,
+                getClass().getClassLoader(),
+                localPort.get(),
+                JenkinsRule::_configureUserRealm);
 
-        server = results.left;
-        ServletContext webServer = results.right;
+        ServletContext webServer =
+                server.getChildHandlerByClass(ContextHandler.class).getServletContext();
 
-        jenkins = new Hudson(temporaryDirectoryAllocator.allocate(), webServer);
+        jenkins = new Hudson(temporaryDirectoryAllocator.allocate(), webServer, TestPluginManager.INSTANCE);
         JenkinsRule._configureJenkinsForTest(jenkins);
         JenkinsRule._configureUpdateCenter(jenkins);
         jenkins.getActions().add(this);
@@ -104,7 +114,7 @@ public abstract class JmhBenchmarkState implements RootAction {
     }
 
     private URL getJenkinsURL() throws MalformedURLException {
-        return new URL("http://localhost:" + localPort.getValue() + contextPath + "/");
+        return new URL("http://localhost:" + localPort.get() + contextPath + "/");
     }
 
     /**

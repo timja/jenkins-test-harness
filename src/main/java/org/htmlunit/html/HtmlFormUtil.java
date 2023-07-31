@@ -21,15 +21,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.gargoylesoftware.htmlunit.html;
-
-import com.gargoylesoftware.htmlunit.ElementNotFoundException;
-import com.gargoylesoftware.htmlunit.Page;
-import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebClientUtil;
+package org.htmlunit.html;
 
 import java.io.IOException;
 import java.util.List;
+import org.htmlunit.ElementNotFoundException;
+import org.htmlunit.Page;
+import org.htmlunit.WebClient;
+import org.htmlunit.WebClientUtil;
 
 /**
  * {@link HtmlForm} helper functions.
@@ -101,9 +100,7 @@ public class HtmlFormUtil {
         final List<HtmlElement> list = htmlForm.getElementsByAttribute("input", "type", "submit");
 
         // collect inputs from lost children
-        for (final HtmlElement elt : htmlForm.getLostChildren()) {
-            list.add(elt);
-        }
+        list.addAll(htmlForm.getLostChildren());
 
         return list;
     }

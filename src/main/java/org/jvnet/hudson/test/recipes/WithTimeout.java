@@ -23,13 +23,13 @@
  */
 package org.jvnet.hudson.test.recipes;
 
-import org.jvnet.hudson.test.HudsonTestCase;
-
 import java.lang.annotation.Documented;
-import static java.lang.annotation.ElementType.METHOD;
+import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
+import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import org.jvnet.hudson.test.HudsonTestCase;
+import org.jvnet.hudson.test.JenkinsRule;
 
 /**
  * Times out the test after the specified number of seconds.
@@ -41,8 +41,10 @@ import java.lang.annotation.Target;
  */
 @Documented
 @Recipe(WithTimeout.RunnerImpl.class)
-@Target(METHOD)
-@Retention(RUNTIME)
+// No need for @JenkinsRecipe in JUnit 4 as it's implemented directly in JenkinsRule 
+// by the private method: getTestTimeoutOverride.
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
 public @interface WithTimeout {
     /**
      * Number of seconds.
@@ -51,6 +53,11 @@ public @interface WithTimeout {
      */
     int value();
 
+    /**
+     * For JUnit 3 tests extending HudsonTestCase
+     * @deprecated New code should use {@link JenkinsRule}.
+     */
+    @Deprecated
     class RunnerImpl extends Recipe.Runner<WithTimeout> {
         @Override
         public void setup(HudsonTestCase testCase, WithTimeout recipe) throws Exception {

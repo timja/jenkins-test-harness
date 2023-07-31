@@ -21,14 +21,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.gargoylesoftware.htmlunit;
-
-import com.gargoylesoftware.htmlunit.html.HtmlPage;
-import com.gargoylesoftware.htmlunit.javascript.JavaScriptErrorListener;
-import org.junit.Assert;
+package org.htmlunit;
 
 import java.net.MalformedURLException;
 import java.net.URL;
+import org.htmlunit.html.HtmlPage;
+import org.htmlunit.javascript.JavaScriptErrorListener;
+import org.junit.Assert;
 
 /**
  * {@link WebClient} helper methods.
@@ -51,7 +50,7 @@ public class WebClientUtil {
      * Wait for all async JavaScript tasks associated with the supplied {@link WebClient} instance
      * to complete.
      * @param webClient The {@link WebClient} instance.
-     * @param timeout The timeout in milliseconds.                  
+     * @param timeout The timeout in milliseconds.
      */
     public static void waitForJSExec(WebClient webClient, long timeout) {
         webClient.getJavaScriptEngine().processPostponedActions();
@@ -135,6 +134,13 @@ public class WebClientUtil {
          */
         @Override
         public void loadScriptError(HtmlPage htmlPage, URL scriptUrl, Exception exception) {
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public void warn(String message, String sourceName, int line, String lineSource, int lineOffset) {
         }
     }
 }

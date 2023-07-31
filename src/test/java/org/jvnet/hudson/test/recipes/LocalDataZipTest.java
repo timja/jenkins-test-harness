@@ -23,9 +23,10 @@
  */
 package org.jvnet.hudson.test.recipes;
 
-import org.junit.Test;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertNotNull;
+
 import org.junit.Rule;
+import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
 
 /**
@@ -38,7 +39,7 @@ public class LocalDataZipTest {
 
     @LocalData
     @Test
-    public void works() throws Exception {
+    public void works() {
         assertNotNull(r.jenkins.getItem("somejob"));
     }
 

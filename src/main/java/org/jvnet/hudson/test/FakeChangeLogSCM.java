@@ -32,21 +32,20 @@ import hudson.model.User;
 import hudson.scm.ChangeLogParser;
 import hudson.scm.ChangeLogSet;
 import hudson.scm.ChangeLogSet.Entry;
+import hudson.scm.EditType;
 import hudson.scm.NullSCM;
 import hudson.scm.RepositoryBrowser;
-import hudson.scm.SCM;
 import hudson.scm.SCMDescriptor;
 import hudson.scm.SCMRevisionState;
-import org.xml.sax.SAXException;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
+import org.xml.sax.SAXException;
 
 /**
  * Fake SCM implementation that can report arbitrary commits from arbitrary users.
@@ -58,7 +57,7 @@ public class FakeChangeLogSCM extends NullSCM implements Serializable {
     /**
      * Changes to be reported in the next build.
      */
-    private List<EntryImpl> entries = new ArrayList<EntryImpl>();
+    private List<EntryImpl> entries = new ArrayList<>();
 
     public EntryImpl addChange() {
         EntryImpl e = new EntryImpl();
@@ -70,7 +69,7 @@ public class FakeChangeLogSCM extends NullSCM implements Serializable {
     public void checkout(Run<?, ?> build, Launcher launcher, FilePath remoteDir, TaskListener listener, File changeLogFile, SCMRevisionState baseline) throws IOException, InterruptedException {
         new FilePath(changeLogFile).touch(0);
         build.addAction(new ChangelogAction(entries, changeLogFile.getName()));
-        entries = new ArrayList<EntryImpl>();
+        entries = new ArrayList<>();
     }
 
     @Override
@@ -79,7 +78,7 @@ public class FakeChangeLogSCM extends NullSCM implements Serializable {
     }
 
     @Override public SCMDescriptor<?> getDescriptor() {
-        return new SCMDescriptor<SCM>(null) {};
+        return new SCMDescriptor<>(null) {};
     }
 
     public static class ChangelogAction extends InvisibleAction {
@@ -101,7 +100,7 @@ public class FakeChangeLogSCM extends NullSCM implements Serializable {
                     return new FakeChangeLogSet(build, action.entries);
                 }
             }
-            return new FakeChangeLogSet(build, Collections.emptyList());
+            return new FakeChangeLogSet(build, List.of());
         }
     }
 
@@ -118,6 +117,7 @@ public class FakeChangeLogSCM extends NullSCM implements Serializable {
             return entries.isEmpty();
         }
 
+        @Override
         public Iterator<EntryImpl> iterator() {
             return entries.iterator();
         }
@@ -128,6 +128,7 @@ public class FakeChangeLogSCM extends NullSCM implements Serializable {
     public static class EntryImpl extends Entry implements Serializable {
         private String msg = "some commit message";
         private String author = "someone";
+        private String path = "path";
 
         public EntryImpl withAuthor(String author) {
             this.author = author;
@@ -136,6 +137,11 @@ public class FakeChangeLogSCM extends NullSCM implements Serializable {
 
         public EntryImpl withMsg(String msg) {
             this.msg = msg;
+            return this;
+        }
+
+        public EntryImpl withPath(String path) {
+            this.path = path;
             return this;
         }
 
@@ -151,7 +157,23 @@ public class FakeChangeLogSCM extends NullSCM implements Serializable {
 
         @Override
         public Collection<String> getAffectedPaths() {
-            return Collections.singleton("path");
+            return Set.of(path);
+        }
+
+        @Override
+        public Collection<ChangeLogSet.AffectedFile> getAffectedFiles() {
+            ChangeLogSet.AffectedFile affectedFile = new ChangeLogSet.AffectedFile() {
+                @Override
+                public String getPath() {
+                    return path;
+                }
+
+                @Override
+                public EditType getEditType() {
+                    return EditType.EDIT;
+                }
+            };
+            return Set.of(affectedFile);
         }
 
         private static final long serialVersionUID = 1L;

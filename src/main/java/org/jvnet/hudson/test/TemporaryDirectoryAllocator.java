@@ -23,22 +23,32 @@
  */
 package org.jvnet.hudson.test;
 
-import hudson.FilePath;
-
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.DirectoryNotEmptyException;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Allocates temporary directories and cleans it up at the end.
  * @author Kohsuke Kawaguchi
  */
 public class TemporaryDirectoryAllocator {
+
+    private static final Logger LOGGER = Logger.getLogger(TemporaryDirectoryAllocator.class.getName());
+
     /**
      * Remember allocated directories to delete them later.
      */
-    private final Set<File> tmpDirectories = new HashSet<File>();
+    private final Set<File> tmpDirectories = new HashSet<>();
 
     /**
      * Directory in which we allocate temporary directories.
@@ -49,7 +59,8 @@ public class TemporaryDirectoryAllocator {
      * Whether there should be a space character in the allocated temporary directories names.
      * It forces slaves created from a {@link JenkinsRule} to work inside a hazardous path,
      * which can help catching shell quoting bugs.<br>
-     * This option is controlled by the <code>jenkins.test.noSpaceInTmpDirs</code> system property.
+     * If a particular test cannot be readily fixed to tolerate spaces, as a workaround try:
+     * {@code @ClassRule public static TestRule noSpaceInTmpDirs = FlagRule.systemProperty("jenkins.test.noSpaceInTmpDirs", "true");}
      */
     private final boolean withoutSpace = Boolean.getBoolean("jenkins.test.noSpaceInTmpDirs");
 
@@ -71,9 +82,7 @@ public class TemporaryDirectoryAllocator {
      */
     public synchronized File allocate() throws IOException {
         try {
-            File f = File.createTempFile((withoutSpace ? "jkh" : "j h"), "", base);
-            f.delete();
-            f.mkdirs();
+            File f = Files.createTempDirectory(base.toPath(), (withoutSpace ? "jkh" : "j h")).toFile();
             tmpDirectories.add(f);
             return f;
         } catch (IOException e) {
@@ -85,33 +94,59 @@ public class TemporaryDirectoryAllocator {
      * Deletes all allocated temporary directories.
      */
     public synchronized void dispose() throws IOException, InterruptedException {
-        IOException x = null;
-        for (File dir : tmpDirectories)
-            try {
-                new FilePath(dir).deleteRecursive();
-            } catch (IOException e) {
-                x = e;
-            }
+        for (File dir : tmpDirectories) {
+            LOGGER.info(() -> "deleting " + dir);
+            delete(dir.toPath());
+        }
         tmpDirectories.clear();
-        if (x!=null)    throw new IOException("Failed to clean up temp dirs",x);
     }
 
     /**
      * Deletes all allocated temporary directories asynchronously.
      */
     public synchronized void disposeAsync() {
-        final Set<File> tbr = new HashSet<File>(tmpDirectories);
+        final Set<File> tbr = new HashSet<>(tmpDirectories);
         tmpDirectories.clear();
 
         new Thread("Disposing "+base) {
+            @Override
             public void run() {
-                for (File dir : tbr)
+                for (File dir : tbr) {
+                    LOGGER.info(() -> "deleting " + dir);
                     try {
-                        new FilePath(dir).deleteRecursive();
-                    } catch (IOException | InterruptedException e) {
-                        e.printStackTrace();
+                        delete(dir.toPath());
+                    } catch (IOException e) {
+                        LOGGER.log(Level.WARNING, null, e);
                     }
+                }
             }
         }.start();
+    }
+
+    private void delete(Path p) throws IOException {
+        LOGGER.fine(() -> "deleting " + p);
+        if (Files.isDirectory(p, LinkOption.NOFOLLOW_LINKS)) {
+            try (DirectoryStream<Path> children = Files.newDirectoryStream(p)) {
+                for (Path child : children) {
+                    delete(child);
+                }
+            }
+        }
+        try {
+            if (isWindows()) {
+                // Windows throws an access denied exception when deleting read-only files
+                boolean ok = p.toFile().setWritable(true);
+                LOGGER.fine(() -> "allow write to " + p + ", result: " + ok);
+            }
+            Files.deleteIfExists(p);
+        } catch (DirectoryNotEmptyException x) {
+            try (Stream<Path> children = Files.list(p)) {
+                throw new IOException(children.map(Path::toString).collect(Collectors.joining(" ")), x);
+            }
+        }
+    }
+
+    private boolean isWindows() {
+        return File.pathSeparatorChar == ';';
     }
 }

@@ -1,16 +1,15 @@
 package org.jvnet.hudson.test;
 
-import hudson.util.Secret;
-import org.junit.Test;
-
-import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
-
-import static org.hamcrest.Matchers.isEmptyOrNullString;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.emptyOrNullString;
 import static org.hamcrest.Matchers.not;
-import static org.junit.Assert.assertThat;
 import static org.jvnet.hudson.test.JenkinsMatchers.hasPlainText;
 import static org.jvnet.hudson.test.JenkinsMatchers.matchesPattern;
+
+import hudson.util.Secret;
+import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
+import org.junit.Test;
 
 public class JenkinsMatchersTest {
 
@@ -18,7 +17,7 @@ public class JenkinsMatchersTest {
     public void testHasPlainText() {
         String plaintext = UUID.randomUUID().toString();
         Secret secret = Secret.fromString(plaintext);
-        assertThat(secret, hasPlainText(not(isEmptyOrNullString())));
+        assertThat(secret, hasPlainText(not(emptyOrNullString())));
         assertThat(secret, hasPlainText(matchesPattern("[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}")));
     }
 

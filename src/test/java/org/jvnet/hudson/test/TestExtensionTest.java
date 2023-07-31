@@ -23,16 +23,14 @@
  */
 package org.jvnet.hudson.test;
 
-import static java.util.stream.Collectors.toList;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 
+import hudson.model.listeners.ItemListener;
 import java.util.List;
-
+import java.util.stream.Collectors;
 import org.hamcrest.Matchers;
 import org.junit.Rule;
 import org.junit.Test;
-
-import hudson.model.listeners.ItemListener;
 
 /**
  * Tests for {@link TestExtension}
@@ -54,11 +52,11 @@ public class TestExtensionTest {
     }
 
     private List<Class<? extends ItemListener>> getExtensionClasses() {
-        return j.jenkins.getExtensionList(ItemListener.class).stream().map(ItemListener::getClass).collect(toList());
+        return j.jenkins.getExtensionList(ItemListener.class).stream().map(ItemListener::getClass).collect(Collectors.toList());
     }
 
     @Test
-    public void test1() throws Exception {
+    public void test1() {
         assertThat(
             getExtensionClasses(),
             Matchers.hasItems(AllTests.class, SingleTests.class, MultipleTests.class)
@@ -66,7 +64,7 @@ public class TestExtensionTest {
     }
 
     @Test
-    public void test2() throws Exception {
+    public void test2() {
         assertThat(
             getExtensionClasses(),
             Matchers.hasItems(AllTests.class, MultipleTests.class)
@@ -78,7 +76,7 @@ public class TestExtensionTest {
     }
 
     @Test
-    public void test3() throws Exception {
+    public void test3() {
         assertThat(
             getExtensionClasses(),
             Matchers.hasItems(AllTests.class)

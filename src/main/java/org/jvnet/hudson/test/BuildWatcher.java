@@ -45,12 +45,13 @@ import org.junit.rules.ExternalResource;
  * Should work in combination with {@link JenkinsRule} or {@link RestartableJenkinsRule}.
  * @see JenkinsRule#waitForCompletion
  * @see JenkinsRule#waitForMessage
+ * @see TailLog
  * @since 1.607
  */
 public final class BuildWatcher extends ExternalResource {
 
     private static boolean active;
-    private static final Map<File,RunningBuild> builds = new ConcurrentHashMap<File,RunningBuild>();
+    private static final Map<File,RunningBuild> builds = new ConcurrentHashMap<>();
 
     private Thread thread;
 
@@ -104,7 +105,8 @@ public final class BuildWatcher extends ExternalResource {
             if (build != null) {
                 build.copy();
             } else {
-                System.err.println(r + " was finalized but not started?!");
+                System.err.println(r + " was finalized but never started; assuming it was started earlier using @LocalData");
+                new RunningBuild(r).copy();
             }
         }
 
@@ -130,8 +132,8 @@ public final class BuildWatcher extends ExternalResource {
                 // Anyway we can just rely on onFinalized to let us know when to stop.
             } catch (FileNotFoundException x) {
                 // build deleted or not started
-            } catch (Exception x) {
-                if (Jenkins.getInstance() != null) {
+            } catch (Throwable x) {
+                if (Jenkins.getInstanceOrNull() != null) {
                     x.printStackTrace();
                 } else {
                     // probably just IllegalStateException: Jenkins.instance is missing, AssertionError: class … is missing its descriptor, etc.

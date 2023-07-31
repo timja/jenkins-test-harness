@@ -7,7 +7,8 @@
       "fileMatch": ["^Jenkinsfile$"],
       "matchStrings": ["jenkins: '(?<currentValue>.*?)'"],
       "depNameTemplate": "org.jenkins-ci.main:jenkins-war",
-      "datasourceTemplate": "maven"
+      "datasourceTemplate": "maven",
+      "registryUrls": ["https://repo.jenkins-ci.org/releases/"]
     }
   ]
 }

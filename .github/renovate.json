@@ -8,7 +8,7 @@
       "matchStrings": ["jenkins: '(?<currentValue>.*?)'"],
       "depNameTemplate": "org.jenkins-ci.main:jenkins-war",
       "datasourceTemplate": "maven",
-      "registryUrls": ["https://repo.jenkins-ci.org/releases/"]
+      "registryUrlTemplate": "https://repo.jenkins-ci.org/releases/"
     }
   ]
 }
